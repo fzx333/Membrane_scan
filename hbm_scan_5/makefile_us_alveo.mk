@@ -74,7 +74,7 @@ VPP_FLAGS += --save-temps
 
 # Kernel linker flags
 VPP_LDFLAGS_krnl_scan += --config ./krnl_scan.cfg
-EXECUTABLE = ./Membrane_scan_q1_HBM
+EXECUTABLE = ./Membrane_scan_5
 EMCONFIG_DIR = $(TEMP_DIR)
 
 ############################## Setting Targets ##############################

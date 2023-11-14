@@ -27,7 +27,7 @@
 #include <vector>
 #include <fstream>
 
-#define NUM_KERNEL 16
+#define NUM_KERNEL 5
 
 // Number of HBM PCs required
 #define MAX_HBM_PC_COUNT 32
@@ -130,15 +130,22 @@ int main(int argc, char* argv[]) {
     }
 
 
-    std::vector<uint16_t, aligned_allocator<uint16_t> > l_shipdate[NUM_KERNEL];
+    std::vector<uint16_t, aligned_allocator<uint16_t> > p_type1[NUM_KERNEL];
+    std::vector<uint16_t, aligned_allocator<uint16_t> > p_type2[NUM_KERNEL];
+    std::vector<uint16_t, aligned_allocator<uint16_t> > p_size1[NUM_KERNEL];
+    std::vector<uint16_t, aligned_allocator<uint16_t> > p_size2[NUM_KERNEL];
+    std::vector<uint16_t, aligned_allocator<uint16_t> > r_name[NUM_KERNEL];
     std::vector<uint16_t, aligned_allocator<uint16_t> > source_sw_results[NUM_KERNEL];
     std::vector<uint16_t, aligned_allocator<uint16_t> > source_hw_results[NUM_KERNEL];
 
     for (int i = 0; i < NUM_KERNEL; i++) {
         source_hw_results[i].resize(vector_size);
         source_sw_results[i].resize(vector_size);
-        l_shipdate[i].resize(vector_size);
-        
+        r_name[i].resize(vector_size);
+        p_size1[i].resize(vector_size);
+        p_size2[i].resize(vector_size);
+        p_type1[i].resize(vector_size);
+        p_type2[i].resize(vector_size); 
     }
 
     // Create the test data
@@ -149,31 +156,62 @@ int main(int argc, char* argv[]) {
   //  }
 
     //Reading the inputs from txt files
-    uint16_t shipdate;
-    std::vector<uint16_t> shipdate_row;
-    std::ifstream f_l_shipdate("l_shipdate.txt");
- 
-    if(!f_l_shipdate.is_open()){
-        std::cerr << "Error: unable to open l_shipdate.txt.txt" << std::endl;
-    }   
-    
-    while(f_l_shipdate >> shipdate){
-        shipdate_row.push_back(shipdate);
+    uint16_t type, size, name;
+
+    std::vector<uint16_t> name_row;
+    std::ifstream f_r_name("r_name.txt");
+    if(!f_r_name.is_open()){
+        std::cerr << "Error: unable to open r_name.txt.txt" << std::endl;
+    }
+    while(f_r_name >> name){
+        name_row.push_back(name);
     }
     for (int i = 0; i < NUM_KERNEL; i++){
 	    for (int j = 0; j < vector_size; j++){
-	  	l_shipdate[i][j] = shipdate_row[NUM_KERNEL*i + j];
-          	//std::cout << year_row[NUM_KERNEL*i + j] << std::endl;
+	  	    r_name[i][j] = name_row[vector_size*i + j];
 	    }
-	    std::cout << "Completed reading for kernel " << i << std::endl;
     }
-    std::cout << "Completed reading data from l_shipdate.txt file.\n";
+    std::cout << "Completed reading data from r_name.txt file.\n";
+    f_r_name.close();
 
-    f_l_shipdate.close();
+    std::vector<uint16_t> type_row;
+    std::ifstream f_p_type("p_type.txt");
+    if(!f_p_type.is_open()){
+        std::cerr << "Error: unable to open p_type.txt.txt" << std::endl;
+    }
+    while(f_p_type >> type){
+        type_row.push_back(type);
+    }
+    for (int i = 0; i < NUM_KERNEL; i++){
+	    for (int j = 0; j < vector_size; j++){
+	  	    p_type1[i][j] = type_row[vector_size*i + j];
+            p_type2[i][j] = type_row[vector_size*i + j];
+	    }
+    }
+    std::cout << "Completed reading data from p_type.txt file.\n";
+    f_p_type.close();
+
+    std::vector<uint16_t> size_row;
+    std::ifstream f_p_size("p_size.txt");
+    if(!f_p_size.is_open()){
+        std::cerr << "Error: unable to open p_size.txt.txt" << std::endl;
+    }
+    while(f_p_size >> size){
+        size_row.push_back(size);
+    }
+    for (int i = 0; i < NUM_KERNEL; i++){
+	    for (int j = 0; j < vector_size; j++){
+	  	    p_size1[i][j] = size_row[vector_size*i + j];
+            p_size2[i][j] = size_row[vector_size*i + j];
+	    }
+    }
+    std::cout << "Completed reading data from p_size1.txt file.\n";
+    f_p_size.close();
+
 
     for (size_t j = 0; j < NUM_KERNEL; j++){
 	    for (size_t i = 0; i < vector_size; i++) {
-            if(l_shipdate[j][i] == 288) {
+            if(p_size1[j][i] == 15 && p_type1[j][i] == 105 && p_size2[j][i] == 15 && p_type2[j][i] == 105 && r_name[j][i] == 7) {
                 source_sw_results[j][i] = 1;
             }
             else {
@@ -195,20 +233,48 @@ int main(int argc, char* argv[]) {
     //cl_mem_ext_ptr_t inBufExt1, inBufExt2, inBufExt3, outBufExt;
     
     std::vector<cl_mem_ext_ptr_t> inBufExt1(NUM_KERNEL);
+    std::vector<cl_mem_ext_ptr_t> inBufExt2(NUM_KERNEL);
+    std::vector<cl_mem_ext_ptr_t> inBufExt3(NUM_KERNEL);
+    std::vector<cl_mem_ext_ptr_t> inBufExt4(NUM_KERNEL);
+    std::vector<cl_mem_ext_ptr_t> inBufExt5(NUM_KERNEL);
     std::vector<cl_mem_ext_ptr_t> outBufExt(NUM_KERNEL);
 
     std::vector<cl::Buffer> buffer_input1(NUM_KERNEL);
+    std::vector<cl::Buffer> buffer_input2(NUM_KERNEL);
+    std::vector<cl::Buffer> buffer_input3(NUM_KERNEL);
+    std::vector<cl::Buffer> buffer_input4(NUM_KERNEL);
+    std::vector<cl::Buffer> buffer_input5(NUM_KERNEL);
     std::vector<cl::Buffer> buffer_output(NUM_KERNEL);
 
     for (int i = 0; i < NUM_KERNEL; i++) {
-        inBufExt1[i].obj = l_shipdate[i].data();
+        inBufExt1[i].obj = r_name[i].data();
         inBufExt1[i].param = 0;
-        inBufExt1[i].flags = pc[i * 2];
+        inBufExt1[i].flags = pc[i * 6];
+        std::cout << "Assigning PC for inBufExt1 " << i << std::endl;
+
+        inBufExt2[i].obj = p_type1[i].data();
+        inBufExt2[i].param = 0;
+        inBufExt2[i].flags = pc[(i * 6) +  1];
+        std::cout << "Assigning PC for inBufExt1 " << i << std::endl;
+
+        inBufExt3[i].obj = p_type2[i].data();
+        inBufExt3[i].param = 0;
+        inBufExt3[i].flags = pc[(i * 6) +  2];
+        std::cout << "Assigning PC for inBufExt1 " << i << std::endl;
+
+        inBufExt4[i].obj = p_size1[i].data();
+        inBufExt4[i].param = 0;
+        inBufExt4[i].flags = pc[(i * 6) +  3];
+        std::cout << "Assigning PC for inBufExt1 " << i << std::endl;
+
+        inBufExt5[i].obj = p_size2[i].data();
+        inBufExt5[i].param = 0;
+        inBufExt5[i].flags = pc[(i * 6) +  4];
         std::cout << "Assigning PC for inBufExt1 " << i << std::endl;
 
         outBufExt[i].obj = source_hw_results[i].data();
         outBufExt[i].param = 0;
-        outBufExt[i].flags = pc[(i * 2) + 1];
+        outBufExt[i].flags = pc[(i * 6) + 5];
         std::cout << "Assigning PC for outBufExt " << i << std::endl;
     }
 
@@ -218,6 +284,14 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < NUM_KERNEL; i++) {
         OCL_CHECK(err, buffer_input1[i] = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
                                                 sizeof(uint16_t) * vector_size, &inBufExt1[i], &err));
+        OCL_CHECK(err, buffer_input2[i] = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
+                                                sizeof(uint16_t) * vector_size, &inBufExt2[i], &err));
+        OCL_CHECK(err, buffer_input3[i] = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
+                                                sizeof(uint16_t) * vector_size, &inBufExt3[i], &err));
+        OCL_CHECK(err, buffer_input4[i] = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
+                                                sizeof(uint16_t) * vector_size, &inBufExt4[i], &err));
+        OCL_CHECK(err, buffer_input5[i] = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
+                                                sizeof(uint16_t) * vector_size, &inBufExt5[i], &err));
         OCL_CHECK(err, buffer_output[i] = cl::Buffer(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX | CL_MEM_USE_HOST_PTR,
                                       		sizeof(uint16_t) * vector_size, &outBufExt[i], &err));
     }
@@ -230,7 +304,7 @@ int main(int argc, char* argv[]) {
     // Copy input data to Device Global Memory
     for (int i = 0; i < NUM_KERNEL; i++) {
         OCL_CHECK(err,
-                  err = q.enqueueMigrateMemObjects({buffer_input1[i]}, 0 /* 0 means from host*/));
+                  err = q.enqueueMigrateMemObjects({buffer_input1[i], buffer_input2[i], buffer_input3[i], buffer_input4[i], buffer_input5[i], }, 0 /* 0 means from host*/));
     }
     q.finish();
     auto host_write_end = std::chrono::high_resolution_clock::now();
@@ -246,8 +320,12 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < NUM_KERNEL; i++) {
         // Setting the k_scan Arguments
         OCL_CHECK(err, err = krnls[i].setArg(0, buffer_input1[i]));
-        OCL_CHECK(err, err = krnls[i].setArg(1, buffer_output[i]));
-        OCL_CHECK(err, err = krnls[i].setArg(2, vector_size));      
+        OCL_CHECK(err, err = krnls[i].setArg(1, buffer_input2[i]));
+        OCL_CHECK(err, err = krnls[i].setArg(2, buffer_input3[i]));
+        OCL_CHECK(err, err = krnls[i].setArg(3, buffer_input4[i]));
+        OCL_CHECK(err, err = krnls[i].setArg(4, buffer_input5[i]));
+        OCL_CHECK(err, err = krnls[i].setArg(5, buffer_output[i]));
+        OCL_CHECK(err, err = krnls[i].setArg(6, vector_size));      
 
         // Invoking the kernel
         OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
@@ -271,9 +349,9 @@ int main(int argc, char* argv[]) {
     q.finish();
     auto host_read_end = std::chrono::high_resolution_clock::now();
     std::cout << "Copied the results from Device Global Memory to Host" << std::endl;
-    host_write_time = std::chrono::duration<double>(host_read_end - host_read_start);
-    host_write_time_in_sec = host_write_time.count();
-    std::cout << "host_write_time.count() = " << host_write_time_in_sec << std::endl;    
+    host_read_time = std::chrono::duration<double>(host_read_end - host_read_start);
+    host_read_time_in_sec = host_read_time.count();
+    std::cout << "host_read_time.count() = " << host_read_time_in_sec << std::endl;    
 
     bool match = true;
     
@@ -282,8 +360,8 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "Finished matching the software and hardware results" << std::endl;
 
-    result = 1 * dataSize * sizeof(uint16_t) + dataSize * sizeof(uint16_t); //sizeof(bool);
-    std::cout << "dataSize*2 = " << result << std::endl;
+    result = 5 * dataSize * sizeof(uint16_t) + dataSize * sizeof(uint16_t); //sizeof(bool);
+    std::cout << "dataSize * 5 = " << result << std::endl;
     result /= (1000 * 1000 * 1000); // to GB
     result /= kernel_time_in_sec;   // to GBps
 
