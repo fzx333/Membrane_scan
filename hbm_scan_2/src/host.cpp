@@ -1,4 +1,5 @@
-/**
+/*
+*
 * Copyright (C) 2019-2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -14,67 +15,7 @@
 * under the License.
 */
 
-/********************************************************************************************
- * Description:
- *
- * Xilinx's High Bandwidth Memory (HBM)-enabled FPGA are the clear solution for
- * providing
- * massive memory bandwidth within the lowest power, footprint, and system cost
- * envolopes.
- *
- * This example is designed to show a simple use case to understand how to use
- * HBM memory.
- *
- * There are total 32 memory resources referenced as HBM[0:31] by V++ and each
- * has a
- * capacity of storing 256MB of data.
- *
- * This example showcases two use cases to differentiate how efficiently one can
- * use HBM pseudo_channels(PC).
- *
- * CASE 1:
- *          +-----------+                   +-----------+
- *          |           | ---- Input1 ----> |           |
- *          |           |                   |           |
- *          |   HBM0    | ---- Input2 ----> |   KERNEL  |
- *          |           |                   |           |
- *          |           | <---- Output ---- |           |
- *          +-----------+                   +-----------+
- *
- *  In this case only one HBM PC, i.e. HBM0, has been used for both the input
- *  vectors and the processed output vector.
- *
- *  CASE 2:
- *          +-----------+                   +-----------+
- *          |           |                   |           |
- *          |   HBM1    | ---- Input1 ----> |           |
- *          |           |                   |           |
- *          +-----------+                   |           |
- *                                          |           |
- *          +-----------+                   |           |
- *          |           |                   |   KERNEL  |
- *          |   HBM2    | ---- Input2 ----> |           |
- *          |           |                   |           |
- *          +-----------+                   |           |
- *                                          |           |
- *          +-----------+                   |           |
- *          |           |                   |           |
- *          |   HBM3    | <---- Output ---- |           |
- *          |           |                   |           |
- *          +-----------+                   +-----------+
- *
- *  In this case three different HBM PCs, i.e. HBM1, HBM2 and HBM3, have been
- * used for input
- *  vectors and the processed output vector.
- *  The PCs HBM1 & HBM2 are used for input vectors whereas HBM3 is used for
- *  processed output vector.
- *
- *  The use case highlights significant change in the data transfer throughput
- * (in terms of
- *  Gigabytes per second) when a single and multiple HBM PCs are used for the
- *  same application.
- *
- *  *****************************************************************************************/
+
 
 #include "xcl2.hpp"
 #include <algorithm>
@@ -282,18 +223,23 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "Allocated memoory on the FPGA creating buffers" << std::endl;
 
+    double kernel_time_in_sec = 0, host_write_time_in_sec = 0, host_read_time_in_sec =0, result = 0;
+
+    std::chrono::duration<double> host_write_time(0);
+    auto host_write_start = std::chrono::high_resolution_clock::now();
     // Copy input data to Device Global Memory
     for (int i = 0; i < NUM_KERNEL; i++) {
         OCL_CHECK(err,
                   err = q.enqueueMigrateMemObjects({buffer_input1[i]}, 0 /* 0 means from host*/));
     }
     q.finish();
+    auto host_write_end = std::chrono::high_resolution_clock::now();
     std::cout << "Copied input data to Device Global Memory" << std::endl;
-
-    double kernel_time_in_sec = 0, result = 0;
+    host_write_time = std::chrono::duration<double>(host_write_end - host_write_start);
+    host_write_time_in_sec = host_write_time.count();
+    std::cout << "host_write_time.count() = " << host_write_time_in_sec << std::endl;    
 
     std::chrono::duration<double> kernel_time(0);
-
     std::cout << "Starting the kernels now" << std::endl;
     auto kernel_start = std::chrono::high_resolution_clock::now();
 
@@ -317,12 +263,18 @@ int main(int argc, char* argv[]) {
     std::cout << "kernel_time.count/NUM_KERNEL = " << kernel_time_in_sec / NUM_KERNEL << std::endl;
 
     // Copy Result from Device Global Memory to Host Local Memory
+    std::chrono::duration<double> host_read_time(0);
+    auto host_read_start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NUM_KERNEL; i++) {
     	OCL_CHECK(err, err = q.enqueueMigrateMemObjects({buffer_output[i]}, CL_MIGRATE_MEM_OBJECT_HOST));
     }
     q.finish();
+    auto host_read_end = std::chrono::high_resolution_clock::now();
     std::cout << "Copied the results from Device Global Memory to Host" << std::endl;
-    
+    host_write_time = std::chrono::duration<double>(host_read_end - host_read_start);
+    host_write_time_in_sec = host_write_time.count();
+    std::cout << "host_write_time.count() = " << host_write_time_in_sec << std::endl;    
+
     bool match = true;
     
     for (int i = 0; i < NUM_KERNEL; i++) {
