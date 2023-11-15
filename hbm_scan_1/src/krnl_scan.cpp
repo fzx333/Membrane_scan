@@ -14,6 +14,11 @@
 * under the License.
 */
 
+/*******************************************************************************
+Description:
+    This is a simple vector addition example using C++ HLS.
+
+*******************************************************************************/
 #include <stdint.h>
 
 //#define VDATA_SIZE 16
@@ -27,26 +32,18 @@ typedef struct bit_datatype { uint16_t data[VDATA_SIZE]; } bit_dt; //TODO alignm
 
 extern "C" {
 void krnl_scan(const v_dt* in1,        // Read-Only Vector 1
-                const v_dt* in2,
-                const v_dt* in3,
-                const v_dt* in4,
-                const v_dt* in5,
-                bit_dt* out_r,            // Output Bitmap
-                const unsigned int size // Size in integer
+               bit_dt* out_r,            // Output Bitmap
+               const unsigned int size // Size in integer
                ) {
 
 #pragma HLS INTERFACE m_axi port = in1 offset = slave bundle = gmem0
-#pragma HLS INTERFACE m_axi port = in2 offset = slave bundle = gmem1
-#pragma HLS INTERFACE m_axi port = in3 offset = slave bundle = gmem2
-#pragma HLS INTERFACE m_axi port = in4 offset = slave bundle = gmem3
-#pragma HLS INTERFACE m_axi port = in5 offset = slave bundle = gmem4
+//#pragma HLS INTERFACE m_axi port = in2 offset = slave bundle = gmem1
+//#pragma HLS INTERFACE m_axi port = in3 offset = slave bundle = gmem2
 #pragma HLS INTERFACE m_axi port = out_r offset = slave bundle = gmem0
 
 #pragma HLS INTERFACE s_axilite port = in1
-#pragma HLS INTERFACE s_axilite port = in2
-#pragma HLS INTERFACE s_axilite port = in3
-#pragma HLS INTERFACE s_axilite port = in4
-#pragma HLS INTERFACE s_axilite port = in5
+//#pragma HLS INTERFACE s_axilite port = in2
+//#pragma HLS INTERFACE s_axilite port = in3
 #pragma HLS INTERFACE s_axilite port = out_r
 #pragma HLS INTERFACE s_axilite port = size
 #pragma HLS INTERFACE s_axilite port = return
@@ -55,10 +52,6 @@ void krnl_scan(const v_dt* in1,        // Read-Only Vector 1
 
 	//to avoid the conditional memory acceses for in2 and in3 
 	bit_dt temp1;
-    bit_dt temp2;
-    bit_dt temp3;
-    bit_dt temp4;
-    bit_dt temp5;
 
 // Auto-pipeline is going to apply pipeline to this loop
 scan1:
@@ -68,12 +61,8 @@ scan1:
 #pragma HLS unroll    
 #pragma HLS LOOP_TRIPCOUNT min = c_dt_size max = c_dt_size
             //out_r[i].data[k] = (in1[i].data[k] == 1993 && 1 <= in2[i].data[k] &&  in2[i].data[k] <= 3 && in3[i].data[k] < 25)?1:0;
-	        temp1.data[k] = (in1[i].data[k] == 7) ? 1 : 0;
-            temp2.data[k] = (in2[i].data[k] == 105) ? 1 : 0;
-            temp3.data[k] = (in3[i].data[k] == 105) ? 1 : 0;
-            temp4.data[k] = (in4[i].data[k] == 15) ? 1 : 0;
-            temp5.data[k] = (in5[i].data[k] == 15) ? 1 : 0;
-            out_r[i].data[k] = temp1.data[k] && temp2.data[k] && temp3.data[k] && temp4.data[k] && temp5.data[k];
+	        temp1.data[k] = (in1[i].data[k] == 288) ? 1 : 0;
+            out_r[i].data[k] = temp1.data[k];
         }
     }
 }

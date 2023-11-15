@@ -1,0 +1,2 @@
+# no need to track the input txt files, it's also very time consuming if you track it.
+*.txt
